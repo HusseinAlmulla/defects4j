@@ -77,15 +77,14 @@ my %supported_vcs = (
                                 next unless $commit; # skip lines before first commit info.
                                 if (my $bug_number = eval('$_ =~' . "$regexp" . '; $1')) {
                                    
-				                					#This condition was set to work with Guava, may not mork for other.
-			                  					#Omit this condition if you running another project.
-		                							if (my $bug =eval('$bug_number =~' . "/.*?\\s*#?(\\d+)/" . '; $1')){
+				    #This condition was set to work with Guava, may not mork for other.
+			              #Omit this condition if you running another project.
+		                if (my $bug =eval('$bug_number =~' . "/.*?\\s*#?(\\d+)/" . '; $1')){
 
                                    #next unless system("${command} ${bug_number}") == 0; # skip bug ids that do not
-
-									                  #This is work just for Guava.
-					                  				#For other project delete this one and use the previous one.
-		                  							next unless system("${command} ${bug}") == 0; # skip bug ids that do not
+				    #This is work just for Guava.
+					#For other project delete this one and use the previous one.
+		              		next unless system("${command} ${bug}") == 0; # skip bug ids that do not
 
                                     my $parent = _git_get_parent($commit);
                                     next unless $parent; # skip revisions without parent:
