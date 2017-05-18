@@ -144,7 +144,10 @@ my %supported_trackers = (
                 },
     'github' => {
                     'default_tracker_uri' => 'https://api.github.com/repos/',
-                    'default_query' => 'labels=Bug',
+                     #This work with guava, because guava project does not has bug label
+                     #instead the have type: defect label
+                     'default_query' => 'labels=type: defect',   
+                    #'default_query' => 'labels=Bug',
                     'default_limit' => 100,
                     'build_uri' => sub {
                                             my ($tracker, $project, $query, $start, $limit) = @_;
