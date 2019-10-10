@@ -1,0 +1,8 @@
+#!/bin/bash
+python --version
+
+
+
+
+
+

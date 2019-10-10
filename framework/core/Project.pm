@@ -75,6 +75,42 @@ JFreeChart (L<Vcs::Svn> backend)
 
 Closure compiler (L<Vcs::Git> backend)
 
+=item B<CommonsCLI|Project::CommonsCLI> 
+
+Commons CLI library (uses Vcs::Git as Vcs backend)
+
+=item B<CommonsCodec|Project::CommonsCodec>
+
+Commons encoders and decoders (uses Vcs::Git as Vcs backend)
+
+=item B<CommonsCsv|Project::CommonsCsv> 
+
+Commons CSV (uses Vcs::Git as Vcs backend)
+
+=item B<CommonsJXPath|Project::CommonsJXPath> 
+
+Commons JXPath (uses Vcs::Git as Vcs backend)
+
+=item * L<Guava|Project::Guava>
+
+Guava library (L<Vcs::Git> backend)
+
+=item * L<JacksonCore|Project::JacksonCore>
+
+Jackson core library (L<Vcs::Git> backend)
+
+=item B<JacksonDatabind|Project::JacksonDatabind> 
+
+Jackson data binding utilities (uses Vcs::Git as Vcs backend)
+
+=item B<JacksonXml|Project::JacksonXml> 
+
+Jackson XML utilities (uses Vcs::Git as Vcs backend)
+
+=item B<Jsoup|Project:Jsoup> 
+
+jsoup HTML parser (uses Vcs::Git as Vcs backend)
+
 =item * L<Lang|Project::Lang>
 
 Commons lang (L<Vcs::Git> backend)
@@ -82,6 +118,10 @@ Commons lang (L<Vcs::Git> backend)
 =item * L<Math|Project::Math>
 
 Commons math (L<Vcs::Git> backend)
+
+=item * L<Mockito|Project::Mockito>
+
+Mockito (L<Vcs::Git> backend)
 
 =item * L<Time|Project::Time>
 
@@ -96,6 +136,7 @@ use warnings;
 use strict;
 use Constants;
 use Utils;
+use Mutation;
 use Carp qw(confess);
 
 =pod
@@ -687,14 +728,43 @@ sub coverage_report {
 
 =pod
 
-  $project->mutate()
+  $project->mutate(instrument_classes, mut_ops)
 
-Mutates the checked-out program version.
+Mutates all classes listed in F<instrument_classes>, using all mutation operators
+defined by the array reference C<mut_ops>, in the checked-out program version.
 Returns the number of generated mutants on success, -1 otherwise.
 
 =cut
 sub mutate {
-    my $self = shift;
+    @_ == 3 or die $ARG_ERROR;
+    my ($self, $instrument_classes, $mut_ops)  = @_;
+    my $work_dir = $self->{prog_root};
+
+    # Read all classes that should be mutated
+    -e $instrument_classes or die "Classes file ($instrument_classes) does not exist!";
+    open(IN, "<$instrument_classes") or die "Cannot read $instrument_classes";
+    my @classes = ();
+    while(<IN>) {
+        s/\r?\n//;
+        push(@classes, $_);
+    }
+    close(IN);
+    # Update properties
+    my $list = join(",", @classes);
+    my $config = {$PROP_MUTATE => $list};
+    Utils::write_config_file("$work_dir/$PROP_FILE", $config);
+
+    # Create mutation definitions (mml file)
+    my $mml_src = "$self->{prog_root}/.mml/default.mml";
+    my $mml_bin = "${mml_src}.bin";
+
+    Mutation::create_mml($instrument_classes, $mml_src, $mut_ops);
+    -e "$mml_bin" or die "Mml file does not exist: $mml_bin!";
+
+    # Set environment variable MML, which is read by Major
+    $ENV{MML} = $mml_bin;
+
+    # Mutate and compile sources
     if (! $self->_ant_call("mutate")) {
         return -1;
     }
@@ -708,7 +778,7 @@ sub mutate {
 
 =pod
 
-  $project->mutation_analysis(log_file, relevant_tests [, single_test])
+  $project->mutation_analysis(log_file, relevant_tests [, exclude_file, single_test])
 
 Performs mutation analysis for the developer-written tests of the checked-out program
 version.
@@ -721,8 +791,9 @@ B<Note that C<mutate> is not called implicitly>.
 =cut
 sub mutation_analysis {
     @_ >= 3 or die $ARG_ERROR;
-    my ($self, $log_file, $relevant_tests, $single_test) = @_;
+    my ($self, $log_file, $relevant_tests, $exclude_file, $single_test) = @_;
     my $log = "-logfile $log_file";
+    my $exclude = defined $exclude_file ? "-Dmajor.exclude=$exclude_file" : "";
     my $relevant = $relevant_tests ? "-Dd4j.relevant.tests.only=true" : "";
 
     my $single_test_opt = "";
@@ -734,14 +805,13 @@ sub mutation_analysis {
     my $basedir = $self->{prog_root};
 
     return $self->_ant_call("mutation.test",
-                            "-Dmajor.exclude=$basedir/exclude.txt " .
                             "-Dmajor.kill.log=$basedir/kill.csv " .
-                            "$relevant $log $single_test_opt");
+                            "$relevant $log $exclude $single_test_opt");
 }
 
 =pod
 
-  $project->mutation_analysis_ext(test_dir, test_include, log_file [, single_test])
+  $project->mutation_analysis_ext(test_dir, test_include, log_file [, exclude_file, single_test])
 
 Performs mutation analysis for all tests in F<test_dir> that match the pattern
 C<test_include>. 
@@ -753,8 +823,9 @@ B<Note that C<mutate> is not called implicitly>.
 =cut
 sub mutation_analysis_ext {
     @_ >= 4 or die $ARG_ERROR;
-    my ($self, $dir, $include, $log_file, $single_test) = @_;
+    my ($self, $dir, $include, $log_file, $exclude_file, $single_test) = @_;
     my $log = "-logfile $log_file";
+    my $exclude = defined $exclude_file ? "-Dmajor.exclude=$exclude_file" : "";
 
     my $basedir = $self->{prog_root};
 
@@ -766,9 +837,8 @@ sub mutation_analysis_ext {
 
     return $self->_ant_call("mutation.test",
                             "-Dd4j.test.dir=$dir -Dd4j.test.include=$include " .
-                            "-Dmajor.exclude=$basedir/exclude.txt " .
                             "-Dmajor.kill.log=$basedir/kill.csv " .
-                            "$log $single_test_opt");
+                            "$log $exclude $single_test_opt");
 }
 
 =pod
@@ -784,8 +854,15 @@ Runs EvoSuite on the checked-out program version.
 # TODO: Extract common (config parsing etc.) code in run_evosuite and run_randoop
 sub run_evosuite {
     @_ >= 6 or die $ARG_ERROR;
-    my ($self, $criterion, $time, $class, $timeout, $config_file, $log_file) = @_;
+    my ($self, $criterion, $time, $class, $approach, $timeout, $config_file, $log_file) = @_;
 
+
+    my  $cmd_approach = "";
+    if (defined $approach){
+	$cmd_approach = "-Dapproach=$approach ";
+    }
+    print("It will use cmd_approach $cmd_approach instead $approach\n");
+    
     my $cp_file = "$self->{prog_root}/project.cp";
     $self->_ant_call("export.cp.compile", "-Dfile.export=$cp_file") or die "Cannot determine project classpath";
     my $cp = `cat $cp_file`;
@@ -800,17 +877,33 @@ sub run_evosuite {
         $config = "$config $_";
     }
     close(IN);
-
-    my $cmd = "cd $self->{prog_root}" .
-              " && java -cp $TESTGEN_LIB_DIR/evosuite-current.jar org.evosuite.EvoSuite " .
-                "-class $class " .
-                "-projectCP $cp " .
-                "-Dtest_dir=evosuite-$criterion " .
-                "-criterion $criterion " .
-                "-Dsearch_budget=$time " .
-                "-Dassertion_timeout=$timeout " .
-                "-Dshow_progress=false " .
-                "$config 2>&1";
+    
+    
+    my $cmd = "";
+    if ($criterion eq "default") {
+        $cmd = "java -cp $TESTGEN_LIB_DIR/evosuite-current.jar org.evosuite.EvoSuite " .
+                    "-class $class " .
+                    "-projectCP $cp " .
+                    "-base_dir $self->{prog_root} " .
+                    "-Dtest_dir=evosuite-$criterion " .
+                    "-Dsearch_budget=$time " .
+                     $cmd_approach .
+                    "-Dassertion_timeout=$timeout " .
+                    "-Dshow_progress=false " .
+                    "$config 2>&1";
+    } else {
+        $cmd = "java -cp $TESTGEN_LIB_DIR/evosuite-current.jar org.evosuite.EvoSuite " .
+                    "-class $class " .
+                    "-projectCP $cp " .
+                    "-base_dir $self->{prog_root} " .
+                    "-Dtest_dir=evosuite-$criterion " .
+                    "-criterion $criterion " .
+                    "-Dsearch_budget=$time " .
+                     $cmd_approach .
+                    "-Dassertion_timeout=$timeout " .
+                    "-Dshow_progress=false " .
+                    "$config 2>&1";
+    }
 
     my $log;
     my $ret = Utils::exec_cmd($cmd, "Run EvoSuite ($criterion;$config_file)", \$log);

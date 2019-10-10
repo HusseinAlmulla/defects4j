@@ -30,7 +30,7 @@ run_evosuite.pl -- generate test suites using EvoSuite.
 
 =head1 SYNOPSIS
 
-  run_evosuite.pl -p project_id -v version_id -n test_id -o out_dir -c criterion [-b search_budget] [-a assertion_timeout] [-t tmp_dir] [-D] [-A]
+  run_evosuite.pl -p project_id -v version_id -n test_id -o out_dir -c criterion [-ap approach] [-b search_budget] [-a assertion_timeout] [-t tmp_dir] [-D] [-A]
 
 =head1 OPTIONS
 
@@ -61,6 +61,10 @@ F<out_dir/project_id/version_id>.
 Generate tests for this criterion using the default search budget.
 See below for supported test criteria.
 
+=item -ap C<approach_id>
+
+The selected approach to use (with or without RL)
+
 =item -b C<search_budget>
 
 Set a specific search budget (optional). See below for defaults.
@@ -86,6 +90,7 @@ All relevant classes: Generate tests for all relevant classes (i.e., all classes
 touched by the triggering tests). By default tests are generated only for
 classes modified by the bug fix.
 
+
 =back
 
 =head1 DESCRIPTION
@@ -107,9 +112,162 @@ bug. The latter is the default behavior.
 =back
 
 =cut
-my %criteria = ( branch         => 100,
-                 weakmutation   => 100,
-                 strongmutation => 200
+my %criteria = ( branch         => 120,
+                 weakmutation   => 120,
+                 strongmutation => 120,
+                 onlymutation => 120,
+                 defuse => 120,
+                 cbranch => 120,
+                 ibranch => 120,
+                 statement => 120,
+                 rho => 120,
+                 ambiguitiy => 120,
+                 alldefs => 120,
+                 exception => 120,
+                 regression => 120,
+                 readability => 120,
+                 onlybranch => 120,
+                 methodtrace => 120,
+                 method => 120,
+                 methodnoexception => 120,
+                 onlyline => 120,
+                 line => 120,
+                 output => 120,
+                 input => 120,
+                 trycatch => 120,
+                 default => 120,
+		 mcc => 120,
+		 "branch:mcc" => 120,
+		 "branch:mcc:method" => 120,
+		 "mcc:method" => 120,
+		 "onlybranch:mcc" => 120,
+                 "branch:line" => 120,
+                 "branch:line:cbranch" => 120,
+                 "branch:line:cbranch:weakmutation" => 120,
+                 "branch:line:cbranch:weakmutation:method" => 120,
+                 "branch:cbranch" => 120,
+                 "branch:weakmutation" => 120,
+                 "branch:weakmutation:cbranch" => 120,
+                 "branch:weakmutation:cbranch:exception" => 120,
+                 "cbranch:branch:line:weakmutation:output" => 120,
+                 "branch:exception" => 120,
+                 "branch:exception:cbranch" => 120,
+                 "branch:weakmutation" => 120,
+                 "branch:weakmutation:method" => 120,
+                 "branch:output" => 120,
+                 "branch:output:line" => 120,
+                 "branch:output:line:weakmutation" => 120,
+                 "branch:weakmutation:line" => 120,
+                 "cbranch:weakmutation" => 120,
+                 "branch:line:weakmutation:exception" => 120,
+                 "branch:cbranch:weakmutation:output" => 120,
+                 "branch:exception:line" => 120,
+                 "branch:exception:line:methodnoexception" => 120,
+                 "cbranch:weakmutation:output" => 120,
+                 "branch:line:output:exception" => 120,
+                 "cbranch:branch:line:exception" => 120,
+                 "cbranch:exception" => 120,
+                 "branch:exception:method" => 120,
+                 "branch:line:method" => 120,
+                 "branch:exception:line:method" => 120,
+                 "branch:line:output:exception:method" => 120,
+                 "branch:line:weakmutation:exception:method" => 120,
+         "BRANCH"                      =>120,
+		 "LINE"                      =>120,
+		 "EXCEPTION"                 =>120,
+		 "WEAKMUTATION"              =>120,
+		 "OUTPUT"                    =>120,
+		 "METHOD"                    =>120,
+		 "CBRANCH"                   =>120,
+		 "METHODNOEXCEPTION"         =>120,
+         "STRONGMUTATION"	     =>120,
+		 "BRANCH:LINE"                      =>120,
+		 "BRANCH:EXCEPTION"                 =>120,
+		 "BRANCH:WEAKMUTATION"              =>120,
+		 "BRANCH:OUTPUT"                    =>120,
+		 "BRANCH:METHOD"                    =>120,
+		 "BRANCH:CBRANCH"                   =>120,
+		 "BRANCH:METHODNOEXCEPTION"         =>120,
+		 "LINE:EXCEPTION"                   =>120,
+		 "LINE:METHOD"                      =>120,
+		 "LINE:CBRANCH"                     =>120,
+		 "LINE:METHODNOEXCEPTION"           =>120,
+		 "LINE:WEAKMUTATION"                =>120,
+		 "LINE:OUTPUT"                      =>120,
+		 "CBRANCH:METHOD"                   =>120,
+		 "CBRANCH:EXCEPTION"                =>120,
+		 "CBRANCH:METHODNOEXCEPTION"        =>120,
+		 "CBRANCH:WEAKMUTATION"             =>120,
+		 "CBRANCH:OUTPUT"                   =>120,
+		 "METHOD:EXCEPTION"                 =>120,
+		 "METHOD:METHODNOEXCEPTION"         =>120,
+		 "METHOD:WEAKMUTATION"              =>120,
+		 "METHOD:OUTPUT"                    =>120,
+		 "EXCEPTION:METHODNOEXCEPTION"      =>120,
+		 "EXCEPTION:WEAKMUTATION"           =>120,
+		 "EXCEPTION:OUTPUT"                 =>120,
+		 "METHODNOEXCEPTION:WEAKMUTATION"   =>120,
+		 "METHODNOEXCEPTION:OUTPUT"         =>120,
+		 "WEAKMUTATION:OUTPUT"              =>120,
+		 "BRANCH:LINE:OUTPUT"               =>120,
+		 "BRANCH:LINE:CBRANCH"              =>120,
+		 "BRANCH:LINE:METHODNOEXCEPTION"    =>120,
+		 "BRANCH:LINE:EXCEPTION"            =>120,
+		 "BRANCH:LINE:WEAKMUTATION"         =>120,
+		 "BRANCH:LINE:METHOD"               =>120,
+		 "BRANCH:METHOD:OUTPUT"             =>120,
+		 "BRANCH:METHOD:CBRANCH"            =>120,
+		 "BRANCH:METHOD:METHODNOEXCEPTION"  =>120,
+		 "BRANCH:METHOD:EXCEPTION"          =>120,
+		 "BRANCH:METHOD:WEAKMUTATION"       =>120,
+		 "BRANCH:WEAKMUTATION:OUTPUT"       =>120,
+		 "BRANCH:WEAKMUTATION:CBRANCH"      =>120,
+		 "BRANCH:WEAKMUTATION:METHODNOEXCEPTION"     =>120,
+		 "BRANCH:WEAKMUTATION:EXCEPTION"    =>120,
+		 "BRANCH:EXCEPTION:OUTPUT"          =>120,
+		 "BRANCH:EXCEPTION:CBRANCH"         =>120,
+		 "BRANCH:EXCEPTION:METHODNOEXCEPTION"        =>120,
+		 "BRANCH:METHODNOEXCEPTION:OUTPUT"  =>120,
+		 "BRANCH:METHODNOEXCEPTION:CBRANCH" =>120,
+		 "BRANCH:CBRANCH:OUTPUT"            =>120,
+		 "LINE:METHOD:OUTPUT"               =>120,
+		 "LINE:METHOD:CBRANCH"              =>120,
+		 "LINE:METHOD:METHODNOEXCEPTION"    =>120,
+		 "LINE:METHOD:EXCEPTION"            =>120,
+		 "LINE:METHOD:WEAKMUTATION"         =>120,
+		 "LINE:WEAKMUTATION:OUTPUT"         =>120,
+		 "LINE:WEAKMUTATION:CBRANCH"        =>120,
+		 "LINE:WEAKMUTATION:METHODNOEXCEPTION"      =>120,
+		 "LINE:WEAKMUTATION:EXCEPTION"      =>120,
+		 "LINE:EXCEPTION:OUTPUT"            =>120,
+		 "LINE:EXCEPTION:CBRANCH"           =>120,
+		 "LINE:EXCEPTION:METHODNOEXCEPTION"        =>120,
+		 "LINE:METHODNOEXCEPTION:OUTPUT"    =>120,
+		 "LINE:METHODNOEXCEPTION:CBRANCH"   =>120,
+		 "LINE:CBRANCH:OUTPUT"              =>120,
+		 "METHOD:WEAKMUTATION:OUTPUT"       =>120,
+		 "METHOD:WEAKMUTATION:CBRANCH"      =>120,
+		 "METHOD:WEAKMUTATION:METHODNOEXCEPTION"    =>120,
+		 "METHOD:WEAKMUTATION:EXCEPTION"    =>120,
+		 "METHOD:EXCEPTION:OUTPUT"          =>120,
+		 "METHOD:EXCEPTION:CBRANCH"         =>120,
+		 "METHOD:EXCEPTION:METHODNOEXCEPTION"        =>120,
+		 "METHOD:METHODNOEXCEPTION:OUTPUT"  =>120,
+		 "METHOD:METHODNOEXCEPTION:CBRANCH"  =>120,
+		 "METHOD:CBRANCH:OUTPUT"             =>120,
+		 "WEAKMUTATION:EXCEPTION:OUTPUT"     =>120,
+		 "WEAKMUTATION:EXCEPTION:CBRANCH"    =>120,
+		 "WEAKMUTATION:EXCEPTION:METHODNOEXCEPTION"  =>120,
+		 "WEAKMUTATION:METHODNOEXCEPTION:OUTPUT"     =>120,
+		 "WEAKMUTATION:METHODNOEXCEPTION:CBRANCH"    =>120,
+		 "WEAKMUTATION:CBRANCH:OUTPUT"        =>120,
+		 "EXCEPTION:METHODNOEXCEPTION:OUTPUT" =>120,
+		 "EXCEPTION:METHODNOEXCEPTION:CBRANCH"       =>120,
+		 "EXCEPTION:CBRANCH:OUTPUT"           =>120,
+		 "METHODNOEXCEPTION:CBRANCH:OUTPUT"   =>120,
+		 "LINE:BRANCH:EXCEPTION:WEAKMUTATION:OUTPUT:METHOD:METHODNOEXCEPTION:CBRANCH" => 120,
+		 "LINE:BRANCH:EXCEPTION:WEAKMUTATION:STRONGMUTATION:OUTPUT:METHOD:METHODNOEXCEPTION:CBRANCH" => 120
+
                );
 
 =pod
@@ -141,7 +299,7 @@ use Log;
 # Process arguments and issue usage message if necessary.
 #
 my %cmd_opts;
-getopts('p:v:o:n:t:c:b:a:AD', \%cmd_opts) or pod2usage(1);
+getopts('p:v:o:n:t:c:h:b:a:ACD', \%cmd_opts) or pod2usage(1);
 
 pod2usage(1) unless defined $cmd_opts{p} and
                     defined $cmd_opts{v} and
@@ -174,6 +332,7 @@ $BUDGET = $BUDGET // $default;
 $DEBUG = 1 if defined $cmd_opts{D};
 
 my $CLASSES = defined $cmd_opts{A} ? "loaded_classes" : "modified_classes";
+$CLASSES = defined $cmd_opts{C} ? "selected_classes" :  $CLASSES;
 
 # List of target classes
 my $TARGET_CLASSES = "$SCRIPT_DIR/projects/$PID/$CLASSES/$BID.src";
@@ -184,6 +343,14 @@ system("mkdir -p $TMP_DIR");
 
 # Set working directory
 $project->{prog_root} = $TMP_DIR;
+
+
+my $approach = $cmd_opts{h};
+print("It will use the approach $approach");
+unless (defined $approach) {
+   $approach = "EVSNORL";
+   print("It will use the defaults approach $approach");
+}
 
 =pod
 
@@ -221,8 +388,7 @@ foreach my $class (@classes) {
     my $config = "$UTIL_DIR/evo.config";
     # Set config to environment variable if defined
     $config = $ENV{EVO_CONFIG_FILE} // $config;
-
-    $project->run_evosuite($CRITERION, $BUDGET, $class, $TIMEOUT, $config, $log) or die "Failed to generate tests!";
+    $project->run_evosuite($CRITERION, $BUDGET, $class, $approach, $TIMEOUT, $config, $log) or die "Failed to generate tests!";
 }
 # Copy log file for this version id and test criterion to output directory
 system("mv $log $LOG_DIR") == 0 or die "Cannot copy log file!";
@@ -251,7 +417,8 @@ F<out_dir/C<project_id>/evosuite-C<criterion>/C<test_id>>
 =cut
 
 # Compress generated tests
-my $archive = "$PID-$VID-evosuite-$CRITERION.$TID.tar.bz2";
+(my $cri_no_semicolon = $CRITERION) =~ s/:/-/g;
+my $archive = "$PID-$VID-evosuite-$cri_no_semicolon.$TID.tar.bz2";
 if (system("tar -cjf $TMP_DIR/$archive -C $TMP_DIR/evosuite-$CRITERION/ .") != 0) {
     $LOG->log_msg("Error: cannot archive and ompress test suite!");
 } else {
@@ -259,7 +426,7 @@ if (system("tar -cjf $TMP_DIR/$archive -C $TMP_DIR/evosuite-$CRITERION/ .") != 0
     #
     # e.g., .../Lang/evosuite-branch/1
     #
-    my $dir = "$OUT_DIR/$PID/evosuite-$CRITERION/$TID";
+    my $dir = "$OUT_DIR/$PID/evosuite-$cri_no_semicolon/$TID";
     system("mkdir -p $dir && mv $TMP_DIR/$archive $dir") == 0 or die "Cannot move test suite archive to output directory!";
 }
 
